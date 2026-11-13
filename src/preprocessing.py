@@ -46,9 +46,7 @@ def clean_data(train, test, target=TARGET):
     report = {}
 
     report["duplicates_train"] = int(train.duplicated().sum())
-    report["duplicates_test"] = int(test.duplicated().sum())
     train = train.drop_duplicates().copy()
-    test = test.drop_duplicates().copy()
 
     report["missing_target"] = int(train[target].isna().sum())
     train = train.dropna(subset=[target]).copy()
@@ -205,8 +203,8 @@ def fit_pca(X_train, X_val, X_test, n_components=None, variance=0.95):
     Z_test = pca.transform(X_test)
     return pca, Z_train, Z_val, Z_test
 
-def save_artifacts(processed_dir, model_dir, preprocessor, pca, selected_features, X_train, y_train, X_val, y_val, X_test,
-                    test_ids, Z_train=None, Z_val=None, Z_test=None):
+def save_processed_data(processed_dir, model_dir, preprocessor, pca, selected_features, X_train, y_train, X_val, y_val, X_test,
+                        test_ids, Z_train=None, Z_val=None, Z_test=None):
     processed_dir = Path(processed_dir)
     model_dir = Path(model_dir)
     processed_dir.mkdir(parents=True, exist_ok=True)

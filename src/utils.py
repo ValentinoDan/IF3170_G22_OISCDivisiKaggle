@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-CHART = "#a8052b"
+CHART = "#1f77b4"
 
 def parent(path):
     if path is not None:
