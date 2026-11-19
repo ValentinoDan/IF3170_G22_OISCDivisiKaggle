@@ -258,9 +258,9 @@ class DecisionTree:
             impurity=self.gini(counts, n_samples),
         )
 
-    # Best-first growth: Shi, H. (2007), Best-first Decision Tree Learning.
+    # Optimization: Best-first (leaf-wise) tree growth [1].
     def build_tree_best_first(self, X, y, indices, rng):
-        """Expand the leaf with the largest dataset-weighted Gini reduction."""
+        "Expand the leaf with the largest dataset-weighted Gini reduction."
         root = self.make_leaf(y, indices)
         heap = []
         sequence = 0
@@ -354,7 +354,7 @@ class DecisionTree:
                 if len(unique_vals) <= 1:
                     continue
                 if self.n_classes_ == 2:
-                    # Ordered categorical Gini splits (Breiman et al., 1984, CART).
+                    # Optimization: Ordered binary categorical subset splitting [2].
                     category_rates = []
                     valid_categories = feat_vals[valid_mask]
                     for category in unique_vals:
@@ -388,8 +388,7 @@ class DecisionTree:
                     left_counts = np.bincount(y_valid[left_mask_valid], minlength=self.n_classes_)
                     directions = ("left", "right") if n_miss > 0 else ("left",)
 
-                    # Missing-direction search: Chen & Guestrin (2016), KDD '16, Algorithm 3.
-                    # Split scoring: CART Gini (Breiman et al., 1984).
+                    # Optimization: Sparsity-aware missing-direction search with CART Gini [2, 3].
                     for direction in directions:
                         if direction == "left" and n_miss > 0:
                             candidate_left_counts = left_counts + missing_counts
@@ -440,6 +439,7 @@ class DecisionTree:
                                 "missing_direction": missing_dir,
                             }
             else:
+                # Optimization: Exact numeric split search via sorted prefix-sum.
                 valid_num = feat_vals_num[valid_mask]
                 sorted_order = np.argsort(valid_num, kind="stable")
                 sorted_num = valid_num[sorted_order]
@@ -662,3 +662,9 @@ class DecisionTree:
     def load(cls, filepath):
         with open(filepath, "rb") as f:
             return pickle.load(f)
+
+
+# References:
+# 1. Shi, H. (2007). "Best-first Decision Tree Learning", M.Sc. Thesis, University of Waikato.
+# 2. Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). "Classification and Regression Trees".
+# 3. Chen, T., & Guestrin, C. (2016). "XGBoost: A Scalable Tree Boosting System", KDD '16, Algorithm 3.

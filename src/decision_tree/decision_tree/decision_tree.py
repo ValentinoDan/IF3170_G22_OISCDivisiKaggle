@@ -1,5 +1,4 @@
 import pickle
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -18,7 +17,6 @@ class DecisionTreeNode:
         probabilities=None,
         n_samples=0,
         impurity=0.0,
-        gain=0.0,
     ):
         self.feature_idx = feature_idx
         self.feature_name = feature_name
@@ -31,7 +29,6 @@ class DecisionTreeNode:
         self.probabilities = probabilities
         self.n_samples = n_samples
         self.impurity = impurity
-        self.gain = gain
 
     @property
     def is_leaf(self):
@@ -66,7 +63,7 @@ class DecisionTree:
         if not isinstance(ccp_alpha, (int, float)) or ccp_alpha < 0:
             raise ValueError(f"ccp_alpha must be >= 0.0, got {ccp_alpha}")
 
-        self._validate_max_features(max_features)
+        self.validate_max_features(max_features)
 
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -84,7 +81,7 @@ class DecisionTree:
         self.feature_types_ = None
 
     @staticmethod
-    def _validate_max_features(val):
+    def validate_max_features(val):
         if val is None:
             return
         if isinstance(val, int):
@@ -99,7 +96,7 @@ class DecisionTree:
         else:
             raise ValueError(f"Invalid max_features type: {type(val)}")
 
-    def _resolve_max_features(self, n_features):
+    def resolve_max_features(self, n_features):
         if self.max_features is None:
             return n_features
         if isinstance(self.max_features, int):
@@ -115,7 +112,7 @@ class DecisionTree:
         return n_features
 
     @staticmethod
-    def _gini(counts, total):
+    def gini(counts, total):
         if total == 0:
             return 0.0
         probs = counts / total
@@ -165,7 +162,7 @@ class DecisionTree:
             )
 
         self.n_features_in_ = X_arr.shape[1]
-        self._resolve_max_features(self.n_features_in_)
+        self.resolve_max_features(self.n_features_in_)
 
         self.classes_, y_encoded = np.unique(y_arr, return_inverse=True)
         self.n_classes_ = len(self.classes_)
@@ -175,19 +172,19 @@ class DecisionTree:
         rng = np.random.RandomState(self.random_state)
         indices = np.arange(X_arr.shape[0])
 
-        self.root = self._build_tree(X_arr, y_encoded, indices, depth=0, rng=rng)
+        self.root = self.build_tree(X_arr, y_encoded, indices, depth=0, rng=rng)
 
         if self.ccp_alpha > 0.0:
-            self._prune_cost_complexity(X_arr.shape[0])
+            self.prune_cost_complexity(X_arr.shape[0])
 
         return self
 
-    def _build_tree(self, X, y, indices, depth, rng):
+    def build_tree(self, X, y, indices, depth, rng):
         n_samples = len(indices)
         node_counts = np.bincount(y[indices], minlength=self.n_classes_)
         node_probs = node_counts / n_samples
         majority_class = int(np.argmax(node_counts))
-        node_impurity = self._gini(node_counts, n_samples)
+        node_impurity = self.gini(node_counts, n_samples)
 
         if (
             (self.max_depth is not None and depth >= self.max_depth)
@@ -202,7 +199,7 @@ class DecisionTree:
                 impurity=node_impurity,
             )
 
-        best_split = self._find_best_split(X, y, indices, rng)
+        best_split = self.find_best_split(X, y, indices, rng)
 
         if best_split is None or best_split["gain"] < self.min_impurity_decrease:
             return DecisionTreeNode(
@@ -223,8 +220,8 @@ class DecisionTree:
                 impurity=node_impurity,
             )
 
-        left_child = self._build_tree(X, y, left_idx, depth + 1, rng)
-        right_child = self._build_tree(X, y, right_idx, depth + 1, rng)
+        left_child = self.build_tree(X, y, left_idx, depth + 1, rng)
+        right_child = self.build_tree(X, y, right_idx, depth + 1, rng)
 
         return DecisionTreeNode(
             feature_idx=best_split["feature_idx"],
@@ -237,13 +234,12 @@ class DecisionTree:
             probabilities=node_probs,
             n_samples=n_samples,
             impurity=node_impurity,
-            gain=best_split["gain"],
         )
 
-    def _find_best_split(self, X, y, indices, rng):
+    def find_best_split(self, X, y, indices, rng):
         n_features = X.shape[1]
         n_samples = len(indices)
-        k_features = self._resolve_max_features(n_features)
+        k_features = self.resolve_max_features(n_features)
 
         if k_features < n_features:
             feature_indices = rng.choice(n_features, size=k_features, replace=False)
@@ -273,7 +269,7 @@ class DecisionTree:
             n_miss = len(missing_indices)
             y_valid = y[valid_indices]
             valid_counts = np.bincount(y_valid, minlength=self.n_classes_)
-            valid_impurity = self._gini(valid_counts, n_valid)
+            valid_impurity = self.gini(valid_counts, n_valid)
 
             if is_cat:
                 unique_vals = pd.unique(feat_vals[valid_mask])
@@ -305,8 +301,8 @@ class DecisionTree:
                 left_counts = np.bincount(y_valid[left_mask_valid], minlength=self.n_classes_)
                 right_counts = valid_counts - left_counts
 
-                left_imp = self._gini(left_counts, n_left)
-                right_imp = self._gini(right_counts, n_right)
+                left_imp = self.gini(left_counts, n_left)
+                right_imp = self.gini(right_counts, n_right)
 
                 gain = valid_impurity - ((n_left / n_valid) * left_imp + (n_right / n_valid) * right_imp)
                 gain *= (n_valid / n_samples)
@@ -335,7 +331,7 @@ class DecisionTree:
 
         return best_split
 
-    def _prepare_X_for_predict(self, X):
+    def prepare_X_for_predict(self, X):
         if self.root is None:
             raise ValueError("This DecisionTree instance is not fitted yet.")
 
@@ -363,12 +359,12 @@ class DecisionTree:
         return X_aligned
 
     def predict_proba(self, X):
-        X_arr = self._prepare_X_for_predict(X)
+        X_arr = self.prepare_X_for_predict(X)
         n_samples = X_arr.shape[0]
         probs = np.zeros((n_samples, self.n_classes_), dtype=float)
 
         for i in range(n_samples):
-            probs[i] = self._predict_row_proba(self.root, X_arr[i])
+            probs[i] = self.predict_row_proba(self.root, X_arr[i])
 
         return probs
 
@@ -377,7 +373,7 @@ class DecisionTree:
         pred_idx = np.argmax(probs, axis=1)
         return self.classes_[pred_idx]
 
-    def _predict_row_proba(self, node, row):
+    def predict_row_proba(self, node, row):
         if node.is_leaf:
             return node.probabilities
 
@@ -385,7 +381,7 @@ class DecisionTree:
 
         if pd.isna(val):
             next_node = node.left if node.missing_direction == "left" else node.right
-            return self._predict_row_proba(next_node, row)
+            return self.predict_row_proba(next_node, row)
 
         if node.is_categorical:
             is_left = (val == node.threshold)
@@ -396,9 +392,9 @@ class DecisionTree:
                 is_left = (node.missing_direction == "left")
 
         next_node = node.left if is_left else node.right
-        return self._predict_row_proba(next_node, row)
+        return self.predict_row_proba(next_node, row)
 
-    def _prune_cost_complexity(self, n_total):
+    def prune_cost_complexity(self, n_total):
         while True:
             internal_nodes = []
 

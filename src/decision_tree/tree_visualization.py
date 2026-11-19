@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 
 def plot_decision_tree(
@@ -10,13 +12,15 @@ def plot_decision_tree(
     ax=None,
     show=False,
     show_probabilities=False,
+    filename=None,
+    output_dir=None,
 ):
-    """Plot a fitted tree; top_n limits visible split nodes in breadth-first order."""
+    "Plot and save a fitted tree, top_n limits visible splits in breadth-first order."
     root = getattr(model, "root", None)
     if root is None:
         raise ValueError("model must be a fitted DecisionTree.")
     if max_depth is not None and (
-        not isinstance(max_depth, int) or max_depth < 0
+        not isinstance(max_depth, int) or isinstance(max_depth, bool) or max_depth < 0
     ):
         raise ValueError("max_depth must be a non-negative integer or None.")
     if top_n is not None and (
@@ -227,6 +231,23 @@ def plot_decision_tree(
     ax.set_ylim(-deepest_level - 0.7, 0.7)
     ax.axis("off")
     fig.tight_layout()
+
+    if filename is None:
+        variant = "optimized" if hasattr(model, "max_leaf_nodes") else "basic"
+        saved_depth = max_depth if max_depth is not None else getattr(model, "max_depth", None)
+        depth_label = f"depth{saved_depth}" if saved_depth is not None else "depth_full"
+        filename = f"decision_tree_{variant}_{depth_label}.png"
+    if not isinstance(filename, str) or Path(filename).name != filename:
+        raise ValueError("filename must be a file name without a directory path.")
+    if Path(filename).suffix.lower() != ".png":
+        raise ValueError("filename must have a .png extension.")
+
+    if output_dir is None:
+        output_dir = Path(__file__).resolve().parent / "output"
+    else:
+        output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_dir / filename, dpi=160, bbox_inches="tight")
 
     if show:
         plt.show()
