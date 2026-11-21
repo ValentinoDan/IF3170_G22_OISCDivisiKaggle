@@ -172,7 +172,10 @@ def resample_train(X, y, strategy="oversample", random_state=RANDOM_STATE):
         return X_res.iloc[order].reset_index(drop=True), y_res.iloc[order].reset_index(drop=True)
     raise ValueError("strategy harus 'oversample' atau 'undersample'")
 
-def select_features(X_train, y_train, X_val=None, X_test=None, k=None, variance_threshold=0.0):
+def select_features(
+    X_train, y_train, X_val=None, X_test=None, k=None, variance_threshold=0.0, *,
+    discrete_features=None,
+):
     selector = VarianceThreshold(threshold=variance_threshold)
     selector.fit(X_train)
     kept = np.asarray(X_train.columns)[selector.get_support()]
@@ -181,7 +184,10 @@ def select_features(X_train, y_train, X_val=None, X_test=None, k=None, variance_
     X_val = X_val[kept] if X_val is not None else None
     X_test = X_test[kept] if X_test is not None else None
 
-    mi = mutual_info_classif(X_train, y_train, random_state=RANDOM_STATE)
+    discrete_mask = "auto" if discrete_features is None else np.isin(kept, discrete_features)
+    mi = mutual_info_classif(
+        X_train, y_train, discrete_features=discrete_mask, random_state=RANDOM_STATE
+    )
     mi_scores = pd.Series(mi, index=X_train.columns, name="mutual_info").sort_values(ascending=False)
 
     if k is not None:
