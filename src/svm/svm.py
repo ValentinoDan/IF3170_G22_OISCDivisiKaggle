@@ -92,7 +92,7 @@ class SVM:
         # 4 (Solve QP Problem)
         alpha = solve_qp(
             P=P, q=q, A=A, b=b, lb=lb, ub=ub, solver="osqp",
-            eps_abs=1e-9, eps_rel=1e-9, max_iter=100000,
+            eps_abs=1e-6, eps_rel=1e-6, max_iter=10000000,
         )
 
         # (Validasi)
