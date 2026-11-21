@@ -157,7 +157,7 @@ class CategoricalLikelihood:
             for c_idx, cls in enumerate(self.classes_):
                 prob_map = self.cond_probs_[col][cls]
                 default_p = self.unseen_prob_[col][cls]
-                mapped = col_vals.map(prob_map).to_numpy(dtype=float)
+                mapped = col_vals.map(prob_map).to_numpy(dtype=float, copy=True)
                 nan_from_unseen = np.isnan(mapped) & (~is_na)
                 mapped[nan_from_unseen] = default_p
 
@@ -186,7 +186,7 @@ class CategoricalLikelihood:
             for c_idx, cls in enumerate(self.classes_):
                 prob_map = self.cond_probs_[col][cls]
                 default_p = max(self.unseen_prob_[col][cls], eps)
-                mapped = col_vals.map(prob_map).to_numpy(dtype=float)
+                mapped = col_vals.map(prob_map).to_numpy(dtype=float, copy=True)
                 nan_from_unseen = np.isnan(mapped) & (~is_na)
                 mapped[nan_from_unseen] = default_p
                 mapped = np.clip(mapped, eps, None)

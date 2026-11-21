@@ -29,8 +29,7 @@ def _get_feature_types(X_df):
     categorical = [col for col in X_df.columns if col not in numeric]
     return numeric, categorical
 
-# Memanfaatkan fungsi preprocessing.class_weights(y) apabila tersedia
-untuk menghitung bobot kelas seimbang.
+# Memanfaatkan fungsi preprocessing.class_weights(y) apabila tersedia untuk menghitung bobot kelas seimbang.
 def _compute_balanced_priors(y):
     if preprocessing is not None and hasattr(preprocessing, "class_weights"):
         weights_dict = preprocessing.class_weights(y)
