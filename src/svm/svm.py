@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from qpsolvers import solve_qp 
 
 # Implementasi dari SVM
@@ -28,7 +27,7 @@ class SVM:
         self.alpha = self.__solveQP(self.kernel_value, y)
 
         # 3. Support Vector 
-        self.support = self.__calculateSupport(self.alpha, x, y)
+        self.__calculateSupport(self.alpha, x, y)
 
         # 4. Bias
         self.bias = self.__calculateBias(self.alpha, self.kernel_value, y)
@@ -39,39 +38,34 @@ class SVM:
     ## Fungsi Prediksi data klasifikasi
     def predict(self, x):
         score = self.__calculatePrediction(x)
-        return 1 if score >= 0 else -1
+
+        if (np.ndim(score) == 0):
+            return 1 if score >= 0 else -1
+        return np.where(score>=0,1,-1)
 
 
     # Helper
-    ## 1. Menghitung fungsi kernel untuk data x dan z
-    def __kernel(self, xi,xj):
+    ## 1. Menghitung fungsi kernel 
+    def __kernel(self, A, B):
+        dot = A @ B.T
         if self.kernel == "linear":
-            return np.dot(np.transpose(xi), xj)
+            return dot
 
         elif self.kernel == "polynomial":
-            return pow((self.gamma * (np.dot(np.transpose(xi),xj)) + self.r), self.p)
+            return (self.gamma * dot + self.r) ** self.p
 
         elif self.kernel == "gaussian":
-            squared = np.sum(pow(np.abs(xi - xj), 2))
-            return math.exp(-self.gamma * squared)
+            a_sq = np.einsum("ij,ij->i", A, A)[:, None]
+            b_sq = np.einsum("ij,ij->i", B, B)[None, :]
+            squared = np.maximum(a_sq + b_sq - 2.0 * dot, 0.0) 
+            return np.exp(-self.gamma * squared)
 
         else:
             raise ValueError("Unknown kernel")
 
     ## 2. Menghitung kernel untuk semua data
     def __computeKernel(self, x):
-        xp = np.array(x)
-        
-        baris, kolom  = xp.shape
-        kernel = np.zeros((baris,baris))
-        for i in range(baris):
-            for j in range (i,baris):
-                value = self.__kernel(xp[i],xp[j])
-
-                kernel[i][j] = value
-                kernel[j][i] = value
-        
-        return kernel
+        return self.__kernel(x,x)
 
     ## 3. Menghitung Alpha
     def __solveQP(self, kernel, y):
@@ -114,6 +108,13 @@ class SVM:
         self.support_alphas = alpha[condition]
         self.support_index = np.where(condition)[0]
 
+        self.dual_coef = self.support_alphas * self.support_labels
+        self.support_norm_sq = np.einsum("ij,ij->i",self.support_vectors, self.support_vectors)
+        # Khusus Linear
+        if self.kernel == "linear":
+            self.w = (self.dual_coef @ self.support_vectors) 
+
+
     ## 5. Menghitung bias
     def __calculateBias(self, alpha, kernel, y):
         # Batas untuk angka yang tidak pure 0
@@ -131,13 +132,15 @@ class SVM:
         
     ## 6. Fungsi untuk menjalankan perhitungan prediksi
     def __calculatePrediction(self, x):
-        total = 0.0
+        x = np.asarray(x, dtype=float)
 
-        for i in range(len(self.support_vectors)):
-            total += (
-                self.support_alphas[i]
-                * self.support_labels[i]
-                * self.__kernel(self.support_vectors[i], x)
-            )
+        if (self.kernel == "linear"):
+            return x @ self.w + self.bias
 
-        return total + self.bias
+        x2d = np.atleast_2d(x)
+        result = self.__kernel(x2d, self.support_vectors) @ self.dual_coef + self.bias
+
+        if (x.ndim == 1):
+            return float(result[0])
+        else:
+            return result 
