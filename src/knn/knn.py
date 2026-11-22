@@ -1,7 +1,5 @@
 from numbers import Integral
-
 import numpy as np
-
 
 class KNN:
     """KNN dengan jarak Euclidean dan suara mayoritas"""

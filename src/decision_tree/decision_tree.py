@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-
 class DecisionTreeNode:
     def __init__(
         self,
@@ -36,7 +35,6 @@ class DecisionTreeNode:
     @property
     def is_leaf(self):
         return self.value is not None
-
 
 class DecisionTree:
     "Classification and Regression Tree (CART)"

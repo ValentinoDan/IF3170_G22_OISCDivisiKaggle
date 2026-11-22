@@ -277,7 +277,6 @@ class GaussianLikelihood:
 
     # Menghitung matriks sum_i w_i * log P(a_i | v_j) untuk fitur numerik kontinu
     def log_likelihood_matrix(self, X_df, feature_weights=None):
-
         n_samples = len(X_df)
         n_classes = len(self.classes_)
         if len(self.features_) == 0:
