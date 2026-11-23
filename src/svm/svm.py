@@ -61,7 +61,10 @@ class SVM:
             return 1 if score >= 0 else -1
         return np.where(score>=0,1,-1)
 
-
+    ## Decision Function
+    def decision_function(self, x):
+        return self.__calculatePrediction(x)
+    
     # Helper
     ## 1. Menghitung fungsi kernel 
     def __kernel(self, A, B):
