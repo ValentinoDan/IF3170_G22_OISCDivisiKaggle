@@ -16,5 +16,5 @@ python -m jupyterlab src/notebook.ipynb
 | Decision Tree | Nathan |
 | K-Nearest Neighbors | Bernard |
 | Logistic Regression | Daniel |
-| Naive Bayes | TBD |
+| Naive Bayes | Nuno |
 | SVM | Brain |
