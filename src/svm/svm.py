@@ -1,10 +1,11 @@
 import numpy as np
 from qpsolvers import solve_qp 
+from scipy.spatial.distance import cdist
 from .smo import solve_smo
 
 # Implementasi dari SVM
 class SVM:
-    # Pilihan kernel: "linear", "polynomial", "gaussian"
+    # Pilihan kernel: "linear", "polynomial", "gaussian", "laplacian"
     # Pilihan solver: "osqp", "smo"
     def __init__(self, gamma = 1.0, r = 0.0, p = 1, c = 1, kernel = "linear", solver = "osqp"):
         self.kernel = kernel
@@ -77,6 +78,11 @@ class SVM:
             b_sq = np.einsum("ij,ij->i", B, B)[None, :]
             squared = np.maximum(a_sq + b_sq - 2.0 * dot, 0.0) 
             return np.exp(-self.gamma * squared)
+
+        elif self.kernel == "laplacian":
+            # Pengukuran sama persis seperti Pengukuran Jarak Manhattan (memakai library supaya komputasi tidak terlalu berat)
+            dist = cdist(A, B, metric="cityblock")
+            return np.exp(-self.gamma * dist)
 
         else:
             raise ValueError("Unknown kernel")
@@ -165,6 +171,9 @@ class SVM:
 
     ## 7. Fungsi untuk menghitung kernel row dan diagonal saja (untuk komputasi yang lebih ringan)
     def __kernelRow(self, X, idx, X_sq = None):
+        if self.kernel == "laplacian":
+            return np.exp(-self.gamma * np.sum(np.abs(X - X[idx]), axis=1))
+        
         dot = X @ X[idx]
         if self.kernel == "linear":
             return dot
@@ -182,7 +191,7 @@ class SVM:
             raise ValueError("Unknown kernel")
 
     def __kernelDiag(self, X, X_sq = None):
-        if self.kernel == "gaussian":
+        if self.kernel in ("gaussian","laplacian"):
             return np.ones(len(X), dtype=float)
 
         if X_sq is None:
