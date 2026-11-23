@@ -1,15 +1,18 @@
 import numpy as np
 from qpsolvers import solve_qp 
+from .smo import solve_smo
 
 # Implementasi dari SVM
 class SVM:
     # Pilihan kernel: "linear", "polynomial", "gaussian"
-    def __init__(self, gamma = 1.0, r = 0.0, p = 1, c = 1, kernel = "linear"):
+    # Pilihan solver: "osqp", "smo"
+    def __init__(self, gamma = 1.0, r = 0.0, p = 1, c = 1, kernel = "linear", solver = "osqp"):
         self.kernel = kernel
         self.gamma = gamma
         self.r = r 
         self.p = p
         self.c = c
+        self.solver = solver
 
     # Main Method
     ## Fungsi Training Data
@@ -20,19 +23,34 @@ class SVM:
         x = np.asarray(x, dtype=float)
         y = np.asarray(z, dtype=float).reshape(-1)
 
-        # 1. Hitung Kernel
-        self.kernel_value = self.__computeKernel(x)
+        if (self.solver == "osqp"):
+            # 1. Hitung Kernel
+            self.kernel_value = self.__computeKernel(x)
 
-        # 2. Solve QP 
-        self.alpha = self.__solveQP(self.kernel_value, y)
+            # 2. Solve QP 
+            self.alpha = self.__solveQP(self.kernel_value, y)
 
-        # 3. Support Vector 
-        self.__calculateSupport(self.alpha, x, y)
+            # 3. Support Vector 
+            self.__calculateSupport(self.alpha, x, y)
 
-        # 4. Bias
-        self.bias = self.__calculateBias(self.alpha, self.kernel_value, y)
+            # 4. Bias
+            self.bias = self.__calculateBias(self.alpha, self.kernel_value, y)
 
-        # 5. Model (Decision Function)
+        elif (self.solver == "smo"):
+            X_sq = np.einsum("ij,ij->i", x, x)
+            kernel_diag = self.__kernelDiag(x, X_sq)
+
+            # 1. Hitung Alpha dan Bias
+            self.alpha, self.bias = solve_smo(y=y, c=self.c, kernel_row = lambda idx: self.__kernelRow(x, idx, X_sq), kernel_diag = kernel_diag,)
+
+            # 2. Hitung Support Vector
+            self.__calculateSupport(self.alpha, x, y)
+            
+
+        else:
+            raise ValueError("Solver invalid.")
+
+        # Model (Decision Function)
         return self
 
     ## Fungsi Prediksi data klasifikasi
@@ -144,3 +162,37 @@ class SVM:
             return float(result[0])
         else:
             return result 
+
+    ## 7. Fungsi untuk menghitung kernel row dan diagonal saja (untuk komputasi yang lebih ringan)
+    def __kernelRow(self, X, idx, X_sq = None):
+        dot = X @ X[idx]
+        if self.kernel == "linear":
+            return dot
+
+        elif self.kernel == "polynomial":
+            return (self.gamma * dot + self.r) ** self.p
+
+        elif self.kernel == "gaussian":
+            if X_sq is None:
+                X_sq = np.einsum("ij,ij->i", X, X)
+            squared = np.maximum(X_sq + X_sq[idx] - 2.0 * dot, 0.0) 
+            return np.exp(-self.gamma * squared)
+
+        else:
+            raise ValueError("Unknown kernel")
+
+    def __kernelDiag(self, X, X_sq = None):
+        if self.kernel == "gaussian":
+            return np.ones(len(X), dtype=float)
+
+        if X_sq is None:
+            X_sq = np.einsum("ij,ij->i", X, X)
+
+        if self.kernel == "linear":
+            return X_sq.copy()
+        
+        elif self.kernel == "polynomial":
+            return (self.gamma * X_sq + self.r) ** self.p
+
+        else:
+            raise ValueError("Unknown kernel")
