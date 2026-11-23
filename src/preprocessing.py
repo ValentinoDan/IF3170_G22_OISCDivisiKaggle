@@ -46,9 +46,7 @@ def clean_data(train, test, target=TARGET):
     report = {}
 
     report["duplicates_train"] = int(train.duplicated().sum())
-    report["duplicates_test"] = int(test.duplicated().sum())
     train = train.drop_duplicates().copy()
-    test = test.drop_duplicates().copy()
 
     report["missing_target"] = int(train[target].isna().sum())
     train = train.dropna(subset=[target]).copy()
@@ -174,7 +172,10 @@ def resample_train(X, y, strategy="oversample", random_state=RANDOM_STATE):
         return X_res.iloc[order].reset_index(drop=True), y_res.iloc[order].reset_index(drop=True)
     raise ValueError("strategy harus 'oversample' atau 'undersample'")
 
-def select_features(X_train, y_train, X_val=None, X_test=None, k=None, variance_threshold=0.0):
+def select_features(
+    X_train, y_train, X_val=None, X_test=None, k=None, variance_threshold=0.0, *,
+    discrete_features=None,
+):
     selector = VarianceThreshold(threshold=variance_threshold)
     selector.fit(X_train)
     kept = np.asarray(X_train.columns)[selector.get_support()]
@@ -183,7 +184,10 @@ def select_features(X_train, y_train, X_val=None, X_test=None, k=None, variance_
     X_val = X_val[kept] if X_val is not None else None
     X_test = X_test[kept] if X_test is not None else None
 
-    mi = mutual_info_classif(X_train, y_train, random_state=RANDOM_STATE)
+    discrete_mask = "auto" if discrete_features is None else np.isin(kept, discrete_features)
+    mi = mutual_info_classif(
+        X_train, y_train, discrete_features=discrete_mask, random_state=RANDOM_STATE
+    )
     mi_scores = pd.Series(mi, index=X_train.columns, name="mutual_info").sort_values(ascending=False)
 
     if k is not None:
@@ -205,8 +209,8 @@ def fit_pca(X_train, X_val, X_test, n_components=None, variance=0.95):
     Z_test = pca.transform(X_test)
     return pca, Z_train, Z_val, Z_test
 
-def save_artifacts(processed_dir, model_dir, preprocessor, pca, selected_features, X_train, y_train, X_val, y_val, X_test,
-                    test_ids, Z_train=None, Z_val=None, Z_test=None):
+def save_processed_data(processed_dir, model_dir, preprocessor, pca, selected_features, X_train, y_train, X_val, y_val, X_test,
+                        test_ids, Z_train=None, Z_val=None, Z_test=None):
     processed_dir = Path(processed_dir)
     model_dir = Path(model_dir)
     processed_dir.mkdir(parents=True, exist_ok=True)
